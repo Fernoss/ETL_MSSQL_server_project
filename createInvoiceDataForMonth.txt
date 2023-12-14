@@ -1,0 +1,143 @@
+USE [StagingDB]
+GO
+
+/****** Object:  StoredProcedure [dbo].[createInvoiceDataForMonth]    Script Date: 14.12.2023 18.20.02 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER
+--CREATE
+PROCEDURE [dbo].[createInvoiceDataForMonth]
+	@YEAR_VALUE int,
+	@month_value int
+AS
+SET NOCOUNT ON;
+BEGIN
+	-- EXEC CreateInvoiceDataForMOnth @year_value = 2021, @month_value = 2;
+	/*
+	testing
+	PRINT CONVERT(varchar, @year_value);
+	PRINT CONVERT(varchar, @month_value);
+	*/
+	/*
+		
+		
+		
+		4) What is the type of the contract
+	*/
+	-- Auxiliary variables related to months
+	DECLARE @startdate date;
+	DECLARE @enddate date;
+	DECLARE @loopdate date;
+
+	SELECT @startdate = DATEFROMPARTS(@year_value, @month_value, 1);
+	SELECT @enddate = DATEADD(day, -1, DATEADD(month, 1, @startdate));
+
+	-- Auxiliary variables related to ContractType
+	DECLARE @contractId int;
+	DECLARE @contractType int;
+	DECLARE @contractPrice decimal(6,3);
+	DECLARE @actualPrice decimal(6,3);
+	DECLARE @cost DECIMAL(6,3);
+
+	-- Auxiliary variables related to invoice
+	DECLARE @invoiceNumber int;
+	DECLARE @invoiceRowNumber int;
+
+
+	-- Variables related to the customer
+	DECLARE @customerId int;
+	DECLARE @customerName varchar(200);
+	DECLARE @CustomerCursorStatus int;
+
+	DECLARE CustomerCursor CURSOR FOR
+		SELECT c.id, c.customername
+		FROM dbo.extractedCustomer AS c;
+		-- WHERE c.id in (2, 40, 60);
+
+	OPEN CustomerCursor;
+	FETCH NEXT FROM CustomerCursor INTO @customerId, @customerName;
+	SET @CustomerCursorStatus = @@FETCH_STATUS;
+
+	-- 1) Go through all the customers individually
+	WHILE (@CustomerCursorStatus = 0)
+	BEGIN
+		-- PRINT @customerName;
+		SELECT @loopdate = @startdate, @invoiceNumber = 0, @invoiceRowNumber = 1;
+
+		-- 2) Go through all the days in the given month
+		WHILE(@loopdate <= @enddate)
+		BEGIN
+			-- 3) What is the active contract
+			SELECT @contractId = c.id, @contractType = c.contracttype_id, @contractPrice = c.fixedprice
+			FROM dbo.extractedContract AS c
+			WHERE c.customer_id = @customerId AND @loopdate BETWEEN c.startdate AND c.enddate;
+
+			-- Defining cost
+			SELECT @cost = CONVERT(decimal(6,3), REPLACE(p.PriceAvg, ',', '.'))
+			FROM dbo.extractedPrices AS p
+			WHERE @startdate = CONVERT(date, p.DateAvg, 104);
+
+			-- If the contract is found, a line item must be written on the invoice
+			IF (@contractId IS NOT NULL)
+			BEGIN
+				-- creating an invoice
+				IF (@invoiceNumber = 0)
+				BEGIN
+					INSERT INTO RepositoryDB.dbo.FactInvoiceHeader (customer_id, invoicedate, duedate)
+					VALUES (@customerId, @enddate, DATEADD(day, 14, @enddate));
+
+					SELECT @invoiceNumber = MAX(invoicenumber)
+					FROM RepositoryDB.dbo.FactInvoiceHeader
+					WHERE customer_id = @customerId AND invoicedate > @startdate;
+				END
+				/*
+				From dbo.extractedContractType
+				1	Daily based price + FixedPrice
+				2	FixedPrice for contract period
+				3	Periodical prices from FixedPrices table
+				*/
+				IF (@contractType = 1)
+					BEGIN
+						-- print @customerName + ' ' + CONVERT(varchar, @loopdate, 121) + ' Daily based price + FixedPrice ' + CONVERT(varchar, @invoiceNumber);
+						SELECT @actualPrice = @contractPrice + @cost;
+					END
+				ELSE IF (@contractType = 2)
+					BEGIN
+						-- print @customerName + ' ' + CONVERT(varchar, @loopdate, 121) + ' FixedPrice for contract period ' + CONVERT(varchar, @invoiceNumber);
+						SELECT @actualPrice = @contractPrice;
+					END
+				ELSE
+					BEGIN
+						-- print @customerName + ' ' + CONVERT(varchar, @loopdate, 121) + ' Periodical prices from FixedPrices table ' + CONVERT(varchar, @invoiceNumber);
+						SELECT @actualPrice = fp.price
+						FROM dbo.extractedFixedPrices AS fp
+						WHERE @loopdate BETWEEN fp.startdate AND fp.enddate;
+					END
+					
+				-- Add a row to Fact-table
+				INSERT INTO RepositoryDB.dbo.FactInvoicesRow (invoicenumber, rownumber, contract_id, contracttype_id, amount, cost)
+					VALUES (@invoiceNumber, @invoiceRowNumber, @contractId, @contractType, @actualPrice, @COST);
+
+				SELECT @invoiceRowNumber = @invoiceRowNumber + 1;
+
+			END
+
+			SELECT @loopdate = DATEADD(day, 1, @loopdate);
+
+		END
+
+		FETCH NEXT FROM CustomerCursor INTO @customerId, @customerName;
+		SET @CustomerCursorStatus = @@FETCH_STATUS;
+	END
+
+	CLOSE CustomerCursor;
+	DEALLOCATE CustomerCursor;
+
+END
+GO
+
+
