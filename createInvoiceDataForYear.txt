@@ -1,0 +1,34 @@
+USE [StagingDB]
+GO
+
+/****** Object:  StoredProcedure [dbo].[createInvoiceDataForYear]    Script Date: 14.12.2023 18.27.24 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER
+--CREATE
+PROCEDURE [dbo].[createInvoiceDataForYear]
+	@year_value int
+AS
+SET NOCOUNT ON;
+BEGIN
+	-- EXEC createInvoiceDataForYear @ÿear_value = 2021;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 1;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 2;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 3;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 4;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 5;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 6;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 7;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 8;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 9;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 10;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 11;
+	EXEC createInvoiceDataForMonth @year_value = @year_value, @month_value = 12;
+END;
+GO
+
+
