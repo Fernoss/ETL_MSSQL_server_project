@@ -1,0 +1,26 @@
+USE [RepositoryDB]
+GO
+
+/****** Object:  View [dbo].[vFactCustomerInvoiceRows]    Script Date: 14.12.2023 18.28.39 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER
+VIEW [dbo].[vFactCustomerInvoiceRows]
+AS
+SELECT
+	h.invoicenumber,
+	r.rownumber,
+	h.customer_id,
+	r.amount, r.cost,
+	r.contract_id,
+	r.contracttype_id
+FROM dbo.FactInvoiceHeader AS h
+JOIN dbo.FactInvoicesRow AS r
+ON h.invoicenumber = r.invoicenumber;
+GO
+
+
