@@ -1,0 +1,30 @@
+USE [RepositoryDB]
+GO
+
+/****** Object:  View [dbo].[vFactCustomerInvoices]    Script Date: 14.12.2023 18.29.42 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER
+--CREATE 
+VIEW [dbo].[vFactCustomerInvoices]
+AS
+SELECT
+	h.invoicenumber, 
+	h.customer_id, 
+	h.invoicedate, 
+	h.duedate,
+	SUM(r.amount) AS totalamount,
+	SUM(r.cost) AS totalcost
+FROM dbo.FactInvoiceHeader AS h
+JOIN dbo.FactInvoicesRow AS r
+ON h.invoicenumber = r.invoicenumber
+GROUP BY
+	h.invoicenumber, 
+	h.customer_id, 
+	h.invoicedate, 
+	h.duedate;
+GO
